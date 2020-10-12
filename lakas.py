@@ -471,8 +471,15 @@ def main():
 
     # Start the optimization.
     for _ in range(optimizer.budget):
-        x = optimizer.ask()
+        # Get the point to evaluate from the optimizer.
+        # When using Bayesian Optimization re-evaluate the current best point every 20th iteration.
+        if optimizer_name == 'bayesopt' and objective.num_budget > 0 and objective.num_budget % 20 == 0:
+            x = optimizer.provide_recommendation()
+        else:
+            x = optimizer.ask()
+        # Run the games.
         loss = objective.run(**x.kwargs)
+        # Inform the optimizer about the result.
         optimizer.tell(x, loss)
 
     # Optimization done, get the best param.
