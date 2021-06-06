@@ -15,9 +15,9 @@ bench 128 1 4 file.epd depth mixed
 
 
 __author__ = 'fsmosca'
-__script_name__ = 'Enhance'
+__script_name__ = 'enhance'
 __version__ = 'v0.1.0'
-__credits__ = ['musketeerchess']
+__credits__ = ['joergoster', 'musketeerchess']
 
 
 from pathlib import Path
@@ -29,13 +29,10 @@ import concurrent.futures
 from concurrent.futures import ProcessPoolExecutor
 import logging
 from statistics import mean
-from typing import List
-import multiprocessing
-from datetime import datetime
 
 
 logging.basicConfig(
-    filename='enhance_log.txt', filemode='w',
+    filename='enhance_log.txt', filemode='a',
     level=logging.DEBUG,
     format='%(asctime)s - pid%(process)5d - %(levelname)5s - %(message)s')
 
@@ -43,7 +40,7 @@ logging.basicConfig(
 class Enhance:
     def __init__(self, engineinfo, hashmb=64, threads=1, limitvalue=15,
                  fenfile='default', limittype='depth', evaltype='mixed',
-                 concurrency=1):
+                 concurrency=1, randomizefen=False, posperfile=50):
         self.engineinfo = engineinfo
         self.hashmb = hashmb
         self.threads = threads
@@ -52,6 +49,8 @@ class Enhance:
         self.limittype=limittype
         self.evaltype=evaltype
         self.concurrency = concurrency
+        self.randomizefen = randomizefen
+        self.posperfile = posperfile
 
         self.nodes = None  # objective value
 
@@ -81,7 +80,6 @@ class Enhance:
         Run the engine, send a bench command and return the nodes searched.
         """
         folder = Path(self.engineinfo['cmd']).parent
-        print(self.engineinfo['cmd'])
 
         # Start the engine.
         proc = subprocess.Popen(self.engineinfo['cmd'], stdin=subprocess.PIPE,
@@ -107,11 +105,19 @@ class Enhance:
 
         return self.nodes
 
-    def generate_files(self, posperfile, randomsort=True):
+    def delete_file(self, fn):
+        filepath = Path(fn)
+        filepath.unlink(missing_ok=True)  # python 3.8 missing_ok is added
+        logging.info(f'The file {fn} was deleted.')
+
+    def generate_files(self):
         """
         Read fen file and split it into different files by the number of workers.
         """
+        t0 = time.perf_counter()
+
         fenlist, filelist = [], []
+        numpos = self.posperfile
 
         fen_file = Path(self.fenfile)
         if not fen_file.is_file():
@@ -122,34 +128,39 @@ class Enhance:
                 fen = lines.rstrip()
                 fenlist.append(fen)
 
-        # sort if required
-        if randomsort:
+        # sort randomly this big fen list
+        if self.randomizefen:
             random.shuffle(fenlist)
 
+        # Extract the specified number of fens per bench run.
+        # If concurrency is 2 we will create 2 files namely file0.fen and file1.fen
         for i in range(self.concurrency):
-            start = i * posperfile
-            end = (i+1) * posperfile
+            # i starts at 0 and if numpos is 50:
+            # start=0, end=50
+            # fenlist[0:50] will extract the first 50 fens as a list.
+            start = i * numpos
+            end = (i+1) * numpos
 
             fens = fenlist[start:end]
             fn = f'file{i}.fen'
 
-            with open(fn, 'a') as f:
+            # Save the list of fens in the file.
+            with open(fn, 'w') as f:
                 for fen in fens:
                     f.write(f'{fen}\n')
 
             filelist.append(fn)
 
-        logging.debug(f'filelist: {filelist}')
+        logging.info(f'numfiles: {len(filelist)}')
+        logging.info(f'file generation elapse {time.perf_counter() - t0:0.2f}s')
 
         return filelist
 
     def run(self):
         """Run the engine to get the objective value."""
         objectivelist, joblist = [], []
-        posperfile, israndom = 24, False
 
-        fenfiles = self.generate_files(posperfile, israndom)
-        print(f'fenfiles: {fenfiles}')
+        fenfiles = self.generate_files()
 
         # Use Python 3.8 or higher.
         with ProcessPoolExecutor(max_workers=self.concurrency) as executor:
@@ -164,14 +175,21 @@ class Enhance:
             for future in concurrent.futures.as_completed(joblist):
                 try:
                     nodes_searched = future.result()
-                    print(f'nodes_searched {nodes_searched}')
                     objectivelist.append(nodes_searched)
                 except concurrent.futures.process.BrokenProcessPool as ex:
-                    print(f'exception: {ex}')
+                    logging.exception(f'exception: {ex}')
+                    raise
+
+        # Delete fen files.
+        for fn in fenfiles:
+            pass  # self.delete_file(fn)
+
+        logging.debug(f'bench nodes: {objectivelist}')
+        logging.debug(f'mean nodes: {int(mean(objectivelist))}')
 
         # This is used by optimizer to signal that the job is done.
         print(f'nodes searched: {int(mean(objectivelist))}')
-        print('Finished match')
+        print('bench done')
 
 
 def define_engine(engine_option_value):
@@ -206,7 +224,7 @@ def main():
                         help='Define engine filename and option, required=True. Example:\n'
                         '-engine cmd=eng.exe option.FutilityMargin=120 option.MoveCount=1000')
     parser.add_argument('-concurrency', required=False,
-                        help='The number of process to run in parallel, default=1',
+                        help='the number of benches to run in parallel, default=1',
                         type=int, default=1)
     parser.add_argument('-hashmb', required=False, help='memory value in mb, default=64',
                         type=int, default=64)
@@ -216,15 +234,19 @@ def main():
                         help='a number that limits the engine search, default=15',
                         type=int, default=15)
     parser.add_argument('-fenfile', required=False,
-                        help='Filename of FEN file.',
+                        help='Filename of FEN or EPD file, default=default',
                         default='default')
     parser.add_argument('-limittype', required=False,
                         help='the type of limit can be depth, perft, nodes and movetime, default=depth',
-                        type=str,
-                        default='depth')
+                        type=str, default='depth')
     parser.add_argument('-evaltype', required=False,
                         help='the type of eval to use can be mixed, classical or NNUE, default=mixed',
                         type=str, default='mixed')
+    parser.add_argument('-randomizefen', action='store_true',
+                        help='A flag to randomize position before using it in bench when position file is used.')
+    parser.add_argument('-posperfile', required=False,
+                        help='the number of positions in the file to be used in the bench, default=50',
+                        type=int, default=50)
     parser.add_argument('-v', '--version', action='version', version=f'{__version__}')
 
     args = parser.parse_args()
@@ -237,11 +259,17 @@ def main():
         print('Error, engines are not properly defined!')
         return
 
+    tstart = time.perf_counter()
+
     duel = Enhance(engineinfo, hashmb=args.hashmb, threads=args.threads,
                    limitvalue=args.limitvalue, fenfile=args.fenfile,
                    limittype=args.limittype, evaltype=args.evaltype,
-                   concurrency=args.concurrency)
+                   concurrency=args.concurrency,
+                   randomizefen=args.randomizefen,
+                   posperfile=args.posperfile)
     duel.run()
+
+    logging.info(f'total elapse time: {time.perf_counter() - tstart:0.2f}s')
 
 
 if __name__ == '__main__':
