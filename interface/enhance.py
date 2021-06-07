@@ -16,7 +16,7 @@ bench 128 1 4 file.epd depth mixed
 
 __author__ = 'fsmosca'
 __script_name__ = 'enhance'
-__version__ = 'v0.1.1'
+__version__ = 'v0.1.2'
 __credits__ = ['joergoster', 'musketeerchess']
 
 
@@ -112,7 +112,11 @@ class Enhance:
 
     def generate_files(self):
         """
-        Read fen file and split it into different files by the number of workers.
+        Read the input fen file, convert it to a list, sort it randomly if required.
+        If there are 2 concurrencies, 2 files will be created (file0.fen, file1.fen).
+        The number of positions in each file is determined by the posperfile option value.
+        These files will be used in the bench command as in:
+            bench 64 1 12 file0.fen depth mixed
         """
         t0 = time.perf_counter()
 
@@ -157,7 +161,10 @@ class Enhance:
         return filelist
 
     def run(self):
-        """Run the engine to get the objective value."""
+        """
+        Run the engine with bench command to get the nodes searched and
+        return it as the objective value.
+        """
         objectivelist, joblist = [], []
 
         fenfiles = self.generate_files()
