@@ -16,7 +16,7 @@ bench 128 1 4 file.epd depth mixed
 
 __author__ = 'fsmosca'
 __script_name__ = 'enhance'
-__version__ = 'v0.1.4'
+__version__ = 'v0.2.0'
 __credits__ = ['joergoster', 'musketeerchess']
 
 
@@ -198,9 +198,10 @@ class Enhance:
 
         logging.debug(f'bench nodes: {objectivelist}')
         logging.debug(f'mean nodes: {int(mean(objectivelist))}')
+        logging.debug(f'sum nodes: {sum(objectivelist)}')
 
         # This is used by optimizer to signal that the job is done.
-        print(f'nodes searched: {int(mean(objectivelist))}')
+        print(f'total nodes searched from {self.concurrency} workers: {sum(objectivelist)}')
         print('bench done')
 
 
