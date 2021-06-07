@@ -16,7 +16,7 @@ bench 128 1 4 file.epd depth mixed
 
 __author__ = 'fsmosca'
 __script_name__ = 'enhance'
-__version__ = 'v0.1.2'
+__version__ = 'v0.1.3'
 __credits__ = ['joergoster', 'musketeerchess']
 
 
@@ -127,6 +127,8 @@ class Enhance:
         if not fen_file.is_file():
             return filelist
 
+        ext = fen_file.suffix
+
         with open(self.fenfile) as f:
             for lines in f:
                 fen = lines.rstrip()
@@ -146,7 +148,7 @@ class Enhance:
             end = (i+1) * numpos
 
             fens = fenlist[start:end]
-            fn = f'file{i}.fen'
+            fn = f'file{i}{ext}'
 
             # Save the list of fens in the file.
             with open(fn, 'w') as f:
