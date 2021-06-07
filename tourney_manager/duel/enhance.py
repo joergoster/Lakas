@@ -16,7 +16,7 @@ bench 128 1 4 file.epd depth mixed
 
 __author__ = 'fsmosca'
 __script_name__ = 'enhance'
-__version__ = 'v0.1.0'
+__version__ = 'v0.1.1'
 __credits__ = ['joergoster', 'musketeerchess']
 
 
@@ -206,7 +206,7 @@ def define_engine(engine_option_value):
             elif 'option.' in value:
                 # option.QueenValueOpening=1000
                 optn = value.split('option.')[1].split('=')[0]
-                optv = int(value.split('option.')[1].split('=')[1])
+                optv = value.split('option.')[1].split('=')[1]
                 optdict.update({optn: optv})
                 engineinfo.update({'opt': optdict})
 
