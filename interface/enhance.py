@@ -16,7 +16,7 @@ bench 128 1 4 file.epd depth mixed
 
 __author__ = 'fsmosca'
 __script_name__ = 'enhance'
-__version__ = 'v0.1.3'
+__version__ = 'v0.1.4'
 __credits__ = ['joergoster', 'musketeerchess']
 
 
@@ -125,6 +125,9 @@ class Enhance:
 
         fen_file = Path(self.fenfile)
         if not fen_file.is_file():
+            if self.fenfile != 'default':
+                print(f'Warning, {self.fenfile} is missing, default will be used!')
+                logging.warning(f'{self.fenfile} is missing, default will be used!')
             return filelist
 
         ext = fen_file.suffix
