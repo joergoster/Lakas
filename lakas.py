@@ -496,13 +496,20 @@ def lakas_oneplusone(instrum, name, input_data_file,
                      mutation='gaussian', crossover=False, budget=100):
     """
     Ref.: https://facebookresearch.github.io/nevergrad/optimizers_ref.html?highlight=logger#nevergrad.families.ParametrizedOnePlusOne
+    
+    Updated for Nevergrad 1.0.12
     """
     # Continue from previous session by loading the previous data.
     if input_data_file is not None:
-        loaded_optimizer = ng.optimizers.ParametrizedOnePlusOne()
-        optimizer = loaded_optimizer.load(input_data_file)
-        logger.info(f'optimizer: {name}, previous budget: {optimizer.num_ask}\n')
-    else:
+        try:
+            optimizer = ng.optimizers.load(input_data_file)
+            logger.info(f'optimizer: {name}, previous budget: {optimizer.num_ask}\n')
+        except Exception as e:
+            logger.warning(f'Failed to load optimizer from {input_data_file}: {e}')
+            # Fallback: create new optimizer
+            input_data_file = None
+    
+    if input_data_file is None:
         # If input noise handling is a tuple, i.e "(optimistic, 0.01)".
         if '(' in noise_handling:
             noise_handling = ast.literal_eval(noise_handling)
@@ -511,10 +518,12 @@ def lakas_oneplusone(instrum, name, input_data_file,
                     f'noise_handling: {noise_handling}, '
                     f'mutation: {mutation}, crossover: {crossover}\n')
 
-        my_opt = ng.optimizers.ParametrizedOnePlusOne(
-            noise_handling=noise_handling, mutation=mutation, crossover=crossover)
-
-        optimizer = my_opt(parametrization=instrum, budget=budget)
+        optimizer = ng.optimizers.OnePlusOne(
+            instrumentation=instrum,
+            noise_handling=noise_handling, 
+            mutation=mutation, 
+            crossover=crossover,
+            budget=budget)
 
     return optimizer
 
@@ -523,16 +532,24 @@ def lakas_tbpsa(instrum, name, input_data_file, naive=True,
                 initial_popsize=None, budget=100):
     """
     Ref.: https://facebookresearch.github.io/nevergrad/optimizers_ref.html?highlight=logger#nevergrad.families.ParametrizedTBPSA
+    
+    Updated for Nevergrad 1.0.12
     """
     if input_data_file is not None:
-        loaded_optimizer = ng.optimizers.ParametrizedTBPSA()
-        optimizer = loaded_optimizer.load(input_data_file)
-        logger.info(f'optimizer: {name}, previous budget: {optimizer.num_ask}\n')
-    else:
+        try:
+            optimizer = ng.optimizers.load(input_data_file)
+            logger.info(f'optimizer: {name}, previous budget: {optimizer.num_ask}\n')
+        except Exception as e:
+            logger.warning(f'Failed to load optimizer from {input_data_file}: {e}')
+            input_data_file = None
+    
+    if input_data_file is None:
         logger.info(f'optimizer: {name}, naive: {naive}, initial_popsize: {initial_popsize}\n')
-        my_opt = ng.optimizers.ParametrizedTBPSA(naive=naive,
-                                                 initial_popsize=initial_popsize)
-        optimizer = my_opt(parametrization=instrum, budget=budget)
+        optimizer = ng.optimizers.TBPSA(
+            instrumentation=instrum,
+            naive=naive,
+            initial_popsize=initial_popsize,
+            budget=budget)
 
     return optimizer
 
@@ -540,14 +557,20 @@ def lakas_tbpsa(instrum, name, input_data_file, naive=True,
 def lakas_spsa(instrum, name, input_data_file, budget=100):
     """
     Ref.: https://facebookresearch.github.io/nevergrad/optimizers_ref.html#nevergrad.optimization.optimizerlib.SPSA
+    
+    Updated for Nevergrad 1.0.12
     """
     if input_data_file is not None:
-        loaded_optimizer = ng.optimizers.SPSA(instrum, budget=budget)
-        optimizer = loaded_optimizer.load(input_data_file)
-        logger.info(f'optimizer: {name}, previous budget: {optimizer.num_ask}\n')
-    else:
+        try:
+            optimizer = ng.optimizers.load(input_data_file)
+            logger.info(f'optimizer: {name}, previous budget: {optimizer.num_ask}\n')
+        except Exception as e:
+            logger.warning(f'Failed to load optimizer from {input_data_file}: {e}')
+            input_data_file = None
+    
+    if input_data_file is None:
         logger.info(f'optimizer: {name}\n')
-        optimizer = ng.optimizers.SPSA(instrum, budget=budget)
+        optimizer = ng.optimizers.SPSA(instrumentation=instrum, budget=budget)
 
     return optimizer
 
@@ -555,16 +578,21 @@ def lakas_spsa(instrum, name, input_data_file, budget=100):
 def lakas_cmaes(instrum, name, input_data_file, budget=100):
     """
     Ref.: https://facebookresearch.github.io/nevergrad/optimizers_ref.html#nevergrad.optimization.optimizerlib.ParametrizedCMA
+    
+    Updated for Nevergrad 1.0.12
     """
     # Continue from previous session by loading the previous data.
     if input_data_file is not None:
-        loaded_optimizer = ng.optimizers.ParametrizedCMA()
-        optimizer = loaded_optimizer.load(input_data_file)
-        logger.info(f'optimizer: {name}, previous budget: {optimizer.num_ask}\n')
-    else:
+        try:
+            optimizer = ng.optimizers.load(input_data_file)
+            logger.info(f'optimizer: {name}, previous budget: {optimizer.num_ask}\n')
+        except Exception as e:
+            logger.warning(f'Failed to load optimizer from {input_data_file}: {e}')
+            input_data_file = None
+    
+    if input_data_file is None:
         logger.info(f'optimizer: {name}\n')
-        my_opt = ng.optimizers.ParametrizedCMA()
-        optimizer = my_opt(parametrization=instrum, budget=budget)
+        optimizer = ng.optimizers.CMA(instrumentation=instrum, budget=budget)
 
     return optimizer
 
@@ -576,12 +604,18 @@ def lakas_bayessian_opt(instrum, name, input_data_file,
                         utility_xi=0.0, budget=100, gp_param_alpha=0.001):
     """
     Ref.: https://facebookresearch.github.io/nevergrad/optimizers_ref.html?highlight=logger#nevergrad.optimization.optimizerlib.ParametrizedBO
+    
+    Updated for Nevergrad 1.0.12
     """
     if input_data_file is not None:
-        loaded_optimizer = ng.optimizers.ParametrizedBO()
-        optimizer = loaded_optimizer.load(input_data_file)
-        logger.info(f'optimizer: {name}, previous budget: {optimizer.num_ask}\n')
-    else:
+        try:
+            optimizer = ng.optimizers.load(input_data_file)
+            logger.info(f'optimizer: {name}, previous budget: {optimizer.num_ask}\n')
+        except Exception as e:
+            logger.warning(f'Failed to load optimizer from {input_data_file}: {e}')
+            input_data_file = None
+    
+    if input_data_file is None:
         gp_param = {'alpha': gp_param_alpha, 'normalize_y': True,
                     'n_restarts_optimizer': 5, 'random_state': None}
 
@@ -594,14 +628,16 @@ def lakas_bayessian_opt(instrum, name, input_data_file,
                     f' utility_xi: {utility_xi},'
                     f' gp_parameters: {gp_param}\n')
 
-        my_opt = ng.optimizers.ParametrizedBO(
-            initialization=initialization, init_budget=init_budget,
+        optimizer = ng.optimizers.BO(
+            instrumentation=instrum,
+            initialization=initialization, 
+            init_budget=init_budget,
             middle_point=middle_point,
-            utility_kind=utility_kind, utility_kappa=utility_kappa,
+            utility_kind=utility_kind, 
+            utility_kappa=utility_kappa,
             utility_xi=utility_xi,
-            gp_parameters=gp_param)
-
-        optimizer = my_opt(parametrization=instrum, budget=budget)
+            gp_parameters=gp_param,
+            budget=budget)
 
     return optimizer
 
@@ -611,15 +647,21 @@ def lakas_ngopt(instrum, name, input_data_file, budget=100):
     References:
         https://facebookresearch.github.io/nevergrad/optimizers_ref.html#nevergrad.optimization.optimizerlib.NGOpt
         https://arxiv.org/pdf/2004.14014.pdf
+    
+    Updated for Nevergrad 1.0.12
     """
     # Continue from previous session by loading the previous data.
     if input_data_file is not None:
-        loaded_optimizer = ng.optimizers.NGOpt(instrum, budget=budget)
-        optimizer = loaded_optimizer.load(input_data_file)
-        logger.info(f'optimizer: {name}, previous budget: {optimizer.num_ask}\n')
-    else:
+        try:
+            optimizer = ng.optimizers.load(input_data_file)
+            logger.info(f'optimizer: {name}, previous budget: {optimizer.num_ask}\n')
+        except Exception as e:
+            logger.warning(f'Failed to load optimizer from {input_data_file}: {e}')
+            input_data_file = None
+    
+    if input_data_file is None:
         logger.info(f'optimizer: {name}\n')
-        optimizer = ng.optimizers.NGOpt(parametrization=instrum, budget=budget)
+        optimizer = ng.optimizers.NGOpt(instrumentation=instrum, budget=budget)
 
     return optimizer
 
@@ -805,19 +847,19 @@ def main():
     parser.add_argument('--input-param', required=True, type=str,
                         help='The parameters that will be optimized.\n'
                              'Example 1 with 1 parameter:\n'
-                             '--input-param \"{\'pawn\': {\'init\': 92,'
-                             ' \'lower\': 90, \'upper\': 120}}\"\n'
+                             '--input-param \"{\"pawn\": {\"init\": 92,'
+                             ' \"lower\": 90, \"upper\": 120}}\"\n'
                              'Example 2 with 2 parameters:\n'
-                             '--input-param \"{\'pawn\': {\'init\': 92,'
-                             ' \'lower\': 90, \'upper\': 120}},'
-                             ' \'knight\': {\'init\': 300, \'lower\': 250,'
-                             ' \'upper\': 350}}\"'
+                             '--input-param \"{\"pawn\": {\"init\": 92,'
+                             ' \"lower\": 90, \"upper\": 120}},'
+                             ' \"knight\": {\"init\": 300, \"lower\": 250,'
+                             ' \"upper\": 350}}\"'
                         )
     parser.add_argument('--common-param', required=False, type=str,
                         help='The parameters that will be sent to both test and base engines.\n'
                              'Make sure that this param is not included in the input-param.\n'
                              'Example:\n'
-                             '--common-param \"{\'RookOpenFile\': 92, \'KnightOutpost\': 300}\"')
+                             '--common-param \"{\"RookOpenFile\": 92, \"KnightOutpost\": 300}\"')
     parser.add_argument('--deterministic-function', action='store_true',
                         help='A flag to consider the objective function as deterministic.')
     parser.add_argument('--use-best-param', action='store_true',
@@ -878,7 +920,7 @@ def main():
     input_param = OrderedDict(sorted(input_param.items()))
 
     logger.info(f'Lakas {__version__}')
-    logger.info(f'nevegrad {ng.__version__}')
+    logger.info(f'nevergrad {ng.__version__}')
 
     logger.info(f'input param: {input_param}\n')
     init_param = set_param(input_param)
@@ -904,10 +946,10 @@ def main():
 
     instrum = ng.p.Instrumentation(**arg)
 
-    # deterministic_function in Nevergrad default since
-    # nevergrad==0.4.3 is true. Lakas by default is false.
-    if not deterministic_function:
-        instrum.descriptors.deterministic_function = False
+    # deterministic_function in Nevergrad 1.0+ is false by default
+    # Set explicitly based on user preference
+    if deterministic_function:
+        instrum.descriptors.deterministic_function = True
 
     logger.info(f'parameter dimension: {instrum.dimension}')
     logger.info(f'deterministic function: {deterministic_function}')
@@ -950,9 +992,36 @@ def main():
         logger.exception(f'optimizer {optimizer_name} is not supported.')
         raise
 
-    # Save optimization log to file, append mode.
-    nevergrad_logger = ng.callbacks.ParametersLogger(optimizer_log_file)
-    optimizer.register_callback("tell", nevergrad_logger)
+    # Save optimization log to file, append mode using the new Nevergrad 1.0.12 API
+    class CustomLogger:
+        """Custom logger to replace ParametersLogger for Nevergrad 1.0.12"""
+        def __init__(self, log_file):
+            self.log_file = log_file
+            self.recommendations = []
+        
+        def __call__(self, optimizer, *args, **kwargs):
+            """Called on each tell event"""
+            recommendation = optimizer.provide_recommendation()
+            loss = optimizer.current_bests["average"].mean if hasattr(optimizer.current_bests["average"], 'mean') else optimizer.current_bests["average"]
+            self.recommendations.append((recommendation, loss))
+            # Log to file
+            with open(self.log_file, 'a') as f:
+                f.write(f"{optimizer.num_ask},{loss}\n")
+        
+        def to_hiplot_experiment(self):
+            """Stub for hiplot compatibility"""
+            try:
+                import hiplot as hip
+                exp = hip.Experiment.from_iterable([
+                    hip.Params(uid=str(i), **dict(rec.value[1], loss=loss))
+                    for i, (rec, loss) in enumerate(self.recommendations)
+                ])
+                return exp
+            except ImportError:
+                raise ImportError("hiplot is required for this feature. Install with: pip install hiplot")
+
+    custom_logger = CustomLogger(optimizer_log_file)
+    optimizer.register_callback("tell", custom_logger)
 
     best_param = {}
     best_loss = None
@@ -979,7 +1048,7 @@ def main():
             recommendation_value = recommendation.value
             best_param = recommendation_value[1]
             curr_best_loss = optimizer.current_bests
-            best_loss = curr_best_loss["average"].mean
+            best_loss = curr_best_loss["average"].mean if hasattr(curr_best_loss["average"], 'mean') else curr_best_loss["average"]
 
             if output_data_file is not None:
                 optimizer.dump(output_data_file)
@@ -990,7 +1059,7 @@ def main():
         recommendation_value = recommendation.value
         best_param = recommendation_value[1]
         curr_best_loss = optimizer.current_bests
-        best_loss = curr_best_loss["average"].mean
+        best_loss = curr_best_loss["average"].mean if hasattr(curr_best_loss["average"], 'mean') else curr_best_loss["average"]
 
     objective = Objective(optimizer, args.engine, input_param, init_param,
                           args.opening_file, opening_file_format,
@@ -1044,13 +1113,13 @@ def main():
         # Plot optimization data with hiplot, save it to html file.
         # Install the hiplot lib with "pip install hiplot".
         try:
-            exp = nevergrad_logger.to_hiplot_experiment()
+            if hasattr(custom_logger, 'to_hiplot_experiment'):
+                exp = custom_logger.to_hiplot_experiment()
+                exp.to_html(f'{optimizer_log_file}.html')
         except ImportError as msg:
             logger.warning(msg)
         except Exception:
             logger.exception('Unexpected exception.')
-        else:
-            exp.to_html(f'{optimizer_log_file}.html')
 
     # Optimization done, get the best param.
     recommendation = optimizer.provide_recommendation()
